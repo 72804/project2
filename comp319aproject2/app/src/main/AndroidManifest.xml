@@ -23,6 +23,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".DetailActivity"
+            android:exported="false"
+            android:label="Todo Details"
+            android:theme="@style/Theme.Comp319aproject2" />
     </application>
 
 </manifest>

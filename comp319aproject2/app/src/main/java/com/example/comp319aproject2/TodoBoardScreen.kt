@@ -1,22 +1,33 @@
-package com.example.comp319aproject2
+package com.example.project2.ui
 
 import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.comp319aproject2.TodoItem
-import com.example.comp319aproject2.TodoViewModel
+import com.example.project2.DetailActivity
+import com.example.project2.TodoItem
+import com.example.project2.TodoViewModel
+import com.example.project2.TodoGroup
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
+private val timestampFormatter = DateTimeFormatter
+    .ofPattern("MMM d, yyyy HH:mm")
+    .withZone(ZoneId.systemDefault())
 
 @Composable
 fun MainScreen(viewModel: TodoViewModel = viewModel()) {
@@ -30,7 +41,6 @@ fun MainScreen(viewModel: TodoViewModel = viewModel()) {
                 .horizontalScroll(rememberScrollState())
                 .padding(8.dp)
         ) {
-            // For each existing group
             groups.forEach { group ->
                 TodoGroupColumn(
                     groupId   = group.groupId,
@@ -38,18 +48,15 @@ fun MainScreen(viewModel: TodoViewModel = viewModel()) {
                     viewModel = viewModel
                 )
             }
-
-            // “+ Group” column
             AddGroupColumn { showAddGroup = true }
         }
 
-        // Dialog to add new group
         if (showAddGroup) {
             TextFieldDialog(
                 title = "New Group",
                 label = "Group name",
-                onConfirm = { name ->
-                    viewModel.addGroup(name)
+                onConfirm = {
+                    viewModel.addGroup(it)
                     showAddGroup = false
                 },
                 onDismiss = { showAddGroup = false }
@@ -64,11 +71,13 @@ fun TodoGroupColumn(
     groupName: String,
     viewModel: TodoViewModel
 ) {
+    val context = LocalContext.current
     val items by viewModel
         .itemsForGroup(groupId)
         .collectAsState(initial = emptyList())
 
     var showAddItem by remember { mutableStateOf(false) }
+    var showDeleteGroupDialog by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
     Column(
@@ -77,31 +86,60 @@ fun TodoGroupColumn(
             .padding(4.dp)
             .fillMaxHeight()
     ) {
-        // Header (fixed)
-        Text(
-            text = groupName,
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier
+        Row(
+            Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
-            maxLines = 1
-        )
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = groupName,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1
+            )
+            IconButton(onClick = { showDeleteGroupDialog = true }) {
+                Icon(Icons.Default.Delete, contentDescription = "Delete Group")
+            }
+        }
 
-        // Items (scrollable)
+        if (showDeleteGroupDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteGroupDialog = false },
+                title = { Text("Delete Group?") },
+                text = { Text("Delete \"$groupName\" and all its items?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.deleteGroupImmediate(TodoGroup(groupId, groupName))
+                        showDeleteGroupDialog = false
+                    }) { Text("Delete") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteGroupDialog = false }) { Text("Cancel") }
+                }
+            )
+        }
+
         Column(
             Modifier
                 .weight(1f)
                 .verticalScroll(scrollState)
         ) {
             items.forEach { item ->
-                TodoItemCard(item, onClick = {
-                    // TODO: launch detail activity in Step 5
-                }, onCheckedChange = { checked ->
-                    viewModel.updateItem(item.copy(isDone = checked))
-                })
+                TodoItemCard(
+                    item,
+                    onClick = {
+                        context.startActivity(
+                            Intent(context, DetailActivity::class.java)
+                                .putExtra("itemId", item.itemId)
+                        )
+                    },
+                    onCheckedChange = { checked ->
+                        viewModel.updateItemImmediate(item.copy(isDone = checked))
+                    }
+                )
             }
 
-            // “+ Item” button
             IconButton(
                 onClick = { showAddItem = true },
                 modifier = Modifier
@@ -112,13 +150,12 @@ fun TodoGroupColumn(
             }
         }
 
-        // Add-item dialog
         if (showAddItem) {
             TextFieldDialog(
                 title = "New Item",
                 label = "Title",
-                onConfirm = { title ->
-                    viewModel.addItem(groupId, title)
+                onConfirm = {
+                    viewModel.addItem(groupId, it)
                     showAddItem = false
                 },
                 onDismiss = { showAddItem = false }
@@ -137,7 +174,7 @@ fun TodoItemCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clickable { onClick() },
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -151,10 +188,19 @@ fun TodoItemCard(
                 onCheckedChange = onCheckedChange
             )
             Spacer(Modifier.width(8.dp))
-            Text(
-                text = item.title,
-                style = MaterialTheme.typography.bodyLarge
-            )
+            Column {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        textDecoration = if (item.isDone) TextDecoration.LineThrough
+                        else TextDecoration.None
+                    )
+                )
+                Text(
+                    text = timestampFormatter.format(item.createdAt),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
     }
 }
@@ -187,24 +233,20 @@ fun TextFieldDialog(
     var text by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
+        title            = { Text(title) },
+        text             = {
             OutlinedTextField(
-                value = text,
+                value         = text,
                 onValueChange = { text = it },
-                label = { Text(label) },
-                singleLine = true
+                label         = { Text(label) },
+                singleLine    = true
             )
         },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(text) }) {
-                Text("OK")
-            }
+        confirmButton    = {
+            TextButton(onClick = { onConfirm(text) }) { Text("OK") }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
+        dismissButton    = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
 }

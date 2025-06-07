@@ -1,4 +1,4 @@
-package com.example.comp319aproject2
+package com.example.project2
 
 import androidx.room.Entity
 import androidx.room.ForeignKey

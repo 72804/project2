@@ -1,58 +1,45 @@
-package com.example.comp319aproject2
+package com.example.project2
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.room.Room
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class TodoViewModel(app: Application) : AndroidViewModel(app) {
 
-    /** Stream of one item, for DetailActivity */
-    fun itemFlow(itemId: Long): Flow<TodoItem> = repo.getItemById(itemId)
-
-    // build your DB once
-    private val db = Room.databaseBuilder(
-        app,
-        AppDatabase::class.java,
-        "todo_board_db"
-    )
-        .fallbackToDestructiveMigration() // safe for dev
-        .build()
-
-    // repo instance
+    private val db   = AppDatabase.getInstance(app)
     private val repo = TodoRepository(db)
 
-    /** Flows the list of groups */
-    val groups: Flow<List<TodoGroup>> =
-        repo.groupsFlow
-            .stateIn(viewModelScope,
-                started = kotlinx.coroutines.flow.SharingStarted.Lazily,
-                initialValue = emptyList())
+    val groups: Flow<List<TodoGroup>> = repo.groupsFlow
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    /** Helper to get items for a group */
     fun itemsForGroup(groupId: Long): Flow<List<TodoItem>> =
         repo.itemsForGroup(groupId)
-            .stateIn(viewModelScope,
-                started = kotlinx.coroutines.flow.SharingStarted.Lazily,
-                initialValue = emptyList())
+            .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    /** UI-triggered actions **/
-    fun addGroup(name: String) = viewModelScope.launch {
-        repo.addGroup(name)
+    fun itemFlow(itemId: Long): Flow<TodoItem> =
+        repo.getItemById(itemId)
+
+    // Async actions
+    fun addGroup(name: String) = viewModelScope.launch { repo.addGroup(name) }
+    fun deleteGroup(group: TodoGroup) = viewModelScope.launch { repo.deleteGroup(group) }
+    fun addItem(groupId: Long, title: String) = viewModelScope.launch { repo.addItem(groupId, title) }
+    fun updateItem(item: TodoItem) = viewModelScope.launch { repo.updateItem(item) }
+    fun deleteItem(item: TodoItem) = viewModelScope.launch { repo.deleteItem(item) }
+
+    // Immediate (blocking) helpers
+    fun deleteItemImmediate(item: TodoItem) {
+        db.todoItemDao().deleteItem(item)
     }
-    fun deleteGroup(group: TodoGroup) = viewModelScope.launch {
-        repo.deleteGroup(group)
+    fun deleteGroupImmediate(group: TodoGroup) {
+        db.todoGroupDao().deleteGroup(group)
     }
-    fun addItem(groupId: Long, title: String) = viewModelScope.launch {
-        repo.addItem(groupId, title)
-    }
-    fun updateItem(item: TodoItem) = viewModelScope.launch {
-        repo.updateItem(item)
-    }
-    fun deleteItem(item: TodoItem) = viewModelScope.launch {
-        repo.deleteItem(item)
+    // immediate update
+    fun updateItemImmediate(item: TodoItem) {
+        db.todoItemDao().updateItem(item)
     }
 }
+

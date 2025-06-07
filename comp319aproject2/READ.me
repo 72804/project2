@@ -1,0 +1,32 @@
+Project 2: Todo Board
+A multi-column, scrollable to-do list app built with Kotlin, Jetpack Compose, and Room for persistent storage. Group your tasks into columns, scroll horizontally between groups and vertically within each group, and tap any item to view or edit its details.
+
+Features
+Grouped columns: Each to-do group is a column; add new groups with the “+” button.
+Two-axis scrolling: Horizontal scroll for groups, vertical scroll for items in each group.
+
+CRUD operations:
+
+Add / delete groups
+Add / edit / delete to-do items
+Tap an item to open its detail screen (with creation date, editable “Details” field, and delete confirmation)
+Check/uncheck items to mark them done
+Persistent storage: Data survives app restarts via Room + SQLite.
+Dark theme: Custom dark palette with purple accents; status & navigation bars match.
+
+Technical Details
+
+Language: Kotlin
+UI: Jetpack Compose (no XML)
+Storage: Room (entities, DAOs, converters, database)
+
+Architecture:
+
+Repository (TodoRepository.kt)
+ViewModel (TodoViewModel.kt) with both suspend and immediate DB calls
+Min API: 28 (Android 9)
+Target API: 35
+Emulator: Android 13+
+
+## Notes
+This project was completed individually as part of the COMP course using Android Studio. Some syntax help and structuring ideas were clarified using ChatGPT, but the implementation is original.

@@ -9,6 +9,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class TodoViewModel(app: Application) : AndroidViewModel(app) {
+
+    /** Stream of one item, for DetailActivity */
+    fun itemFlow(itemId: Long): Flow<TodoItem> = repo.getItemById(itemId)
+
     // build your DB once
     private val db = Room.databaseBuilder(
         app,

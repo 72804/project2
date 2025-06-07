@@ -4,6 +4,10 @@ import com.example.comp319aproject2.AppDatabase
 import kotlinx.coroutines.flow.Flow
 
 class TodoRepository(private val db: AppDatabase) {
+
+    // single‐item stream
+    fun getItemById(itemId: Long): Flow<TodoItem> = db.todoItemDao().getItemById(itemId)
+
     // expose a Flow of all groups
     val groupsFlow: Flow<List<TodoGroup>>
         get() = db.todoGroupDao().getAllGroups()
